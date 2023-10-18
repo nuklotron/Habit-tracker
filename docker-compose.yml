@@ -1,0 +1,59 @@
+version: '3.11'
+services:
+
+  db:
+    image: postgres:14.8-alpine
+    container_name: db
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: pg_isready -U ${DB_USER} -d ${DB_NAME}
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - '6379:6379'
+    restart: always
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+
+  migration:
+    build: .
+    container_name: migration
+    env_file: .env
+    command: python manage.py migrate --noinput
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    container_name: app
+    ports:
+      - '8002:8002'
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+
+  celery-beat:
+    build: .
+    container_name: celery
+    env_file: .env
+    depends_on:
+      app:
+        condition: service_started
+
+    command: celery -A config beat -l info -S django

@@ -29,3 +29,8 @@
 Для запуска приложения > <b>python manage.py runserver</b>
 
 Запуск рассылки - celery -A config beat -l INFO 
+
+Убедись, что у тебя установлен Docker - <b>docker --version</b>
+Для сборки образов используй команду - <b>docker-compose build</b>
+Для запуска контейнеров - <b>docker-compose up</b>
+
