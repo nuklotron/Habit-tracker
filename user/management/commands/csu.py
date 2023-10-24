@@ -15,3 +15,4 @@ class Command(BaseCommand):
 
         user.set_password('admin')
         user.save()
+        print("Superuser was created!")

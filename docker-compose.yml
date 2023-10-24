@@ -27,33 +27,32 @@ services:
     volumes:
       - ./redis.conf:/etc/redis/redis.conf
 
-  migration:
-    build: .
-    container_name: migration
-    env_file: .env
-    command: python manage.py migrate --noinput
-    depends_on:
-      db:
-        condition: service_healthy
-
   app:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8002"
     container_name: app
     ports:
       - '8002:8002'
     depends_on:
-      migration:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
     env_file:
       - .env
 
-  celery-beat:
+  celery-worker:
     build: .
-    container_name: celery
+    container_name: celery_w
     env_file: .env
     depends_on:
       app:
         condition: service_started
+    command: bash -c "sleep 10; celery -A config worker -l INFO"
 
-    command: celery -A config beat -l info -S django
+  celery-beat:
+    build: .
+    container_name: celery_b
+    env_file: .env
+    depends_on:
+      celery-worker:
+        condition: service_started
+    command: bash -c "sleep 10; python manage.py csu && celery -A config beat -l info -S django"
